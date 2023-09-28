@@ -1,0 +1,3 @@
+XNAT dicoms to nyx3 RAD22 rawDicom?
+Only dicoms or other file types?
+CCN MRI dicoms to XNAT?
