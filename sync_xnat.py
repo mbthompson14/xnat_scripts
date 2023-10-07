@@ -54,7 +54,7 @@ from netrc import netrc
 from urllib import parse
 
 # pathways
-LOGS_PATH = 'LOGS/'  # can use pathlib if also need to make parent directories
+LOGS_PATH = 'LOGS/'
 NYX_DICOM = 'RawDICOM/'
 # XNAT API parameters
 HOST = 'https://xnatccn.semel.ucla.edu/'
@@ -87,13 +87,18 @@ def get_xnat_json(HOST: str, PROJECT_ID: str, logger: logging.Logger, level:int)
             # find a way to get json of all files for all subjects in radco
             # file_obj = connection.projects['project'].subjects['S'].experiments['EXP'].scans['T1'].resources['DICOM'].files[0]
 
+            #print(session.get_json('/data/projects/RADCO'))
+
+            xnat_paths = set()
+
             for subject in radco.subjects.values():
-                for session in subject.experiments.values():
-                    for scan in session.scans.values():
+                for exp in subject.experiments.values():
+                    for scan in exp.scans.values():
                         for resource in scan.resources.values():
                             for file in resource.files.values():
-                                print(file)
+                                xnat_paths.add(file.external_uri())
 
+            print(xnat_paths)
 
             # # Check if there are actually file to be found
             # self equals experiment here
@@ -168,7 +173,7 @@ def get_xnat_json(HOST: str, PROJECT_ID: str, logger: logging.Logger, level:int)
 
 if __name__ == "__main__":
     # make directories if they don't exist
-    os.makedirs(LOGS_PATH, exist_ok=True)
+    os.makedirs(LOGS_PATH, exist_ok=True) # can use pathlib if also need to make parent directories
     os.makedirs(NYX_DICOM, exist_ok=True)
 
     # make sure .netrc is set up properly
