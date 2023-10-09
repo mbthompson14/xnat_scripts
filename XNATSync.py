@@ -19,7 +19,7 @@ class XNATSync:
         with self._xnat.connect(host, loglevel='INFO') as session:
             if project_id in session.projects:
                 project = session.projects[project_id]
-                xnat_paths = self.list_xnat_objects(project)
+                xnat_paths = self.list_xnat_objects(session, project)
 
                 to_download = xnat_paths - local_paths
 
@@ -66,16 +66,24 @@ class XNATSync:
         return paths
 
     
-    def list_xnat_objects(self, project: str) -> set():
+    def list_xnat_objects(self, session, project: str) -> set():
 
         xnat_paths = set()
 
         #TODO might be a more efficient way to do this
-        for subject in project.subjects.values():
-            for exp in subject.experiments.values():
-                for scan in exp.scans.values():
-                    for resource in scan.resources.values():
-                        for file in resource.files.values():
-                            xnat_paths.add(file.uri[1:])
+        # for subject in project.subjects.values():
+        #     for exp in subject.experiments.values():
+        #         for scan in exp.scans.values():
+        #             for resource in scan.resources.values():
+        #                 for file in resource.files.values():
+        #                     xnat_paths.add(file.uri[1:])
         
+        # slightly faster
+        for subject in project.subjects.values():
+                for exp in subject.experiments.values():
+                    for scan in exp.scans.values():
+                         uri = f'/data/projects/{project}/subjects/{subject.label}/experiments/{exp.id}/scans/{scan.id}/files'
+                         for file in session.get_json(uri)['ResultSet']['Result']:
+                              xnat_paths.add(file['URI'])
+
         return xnat_paths
