@@ -3,7 +3,7 @@ from XNATSync import XNATSync
 def main():
     HOST = 'https://xnatccn.semel.ucla.edu/'
     PROJECT_ID = 'RADCO'
-    LOCAL = 'RawDICOM/'
+    LOCAL = 'RawDICOM'
 
     sync = XNATSync()
     sync.sync(host=HOST,project_id=PROJECT_ID,local=LOCAL)

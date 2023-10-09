@@ -1,3 +1,4 @@
+import os
 import xnat
 from pathlib import Path
 
@@ -13,25 +14,40 @@ class XNATSync:
         """
 
         local_paths = self.list_local_objects(local_folder=local)
-        
+        #print(local_paths)
+
         with self._xnat.connect(host, loglevel='INFO') as session:
             if project_id in session.projects:
                 project = session.projects[project_id]
+                xnat_paths = self.list_xnat_objects(project)
+
+                to_download = xnat_paths - local_paths
+
+                for download_path in to_download:
+                    #download_path += '.zip'
+                    try:
+                        local_path = Path(local,download_path)
+                        local_path.parent.mkdir(parents=True,exist_ok=True)
+                        uri = '/' + download_path
+                        #session.download(uri=uri,target=local_path)
+                        session.download(uri=uri,target=local_path)
+
+                        #TODO need to find a faster way to download
+                        # zip individual files then unzip?
+                        # zip resource folders and unzip? could use download_dir for this
+
+                        """
+                        with tempfile.TemporaryFile() as temp_path:
+                            self.xnat_session.download_stream(self.uri + '/files', temp_path, format='zip', verbose=verbose)
+
+                        with ZipFile(temp_path) as zip_file:
+                            zip_file.extractall(target_dir)
+                        """
+
+                    except Exception as e:
+                        raise Exception(f'Error downloading file: {download_path}\nOriginal exception: {e}')
             else:
                 raise Exception("Project ID not found in XNAT")
-
-            xnat_paths = self.list_xnat_objects(project)
-
-            to_download = xnat_paths - local_paths
-
-            for download_path in to_download:
-                #download_path += '.zip'
-                try:
-                    #TODO: NEED TO CREATE DIRECTORY FIRST?
-                    # OR MAYBE IT CANT FIND THE PATH ON XNAT
-                    session.download(uri=download_path,target=Path(local,download_path))
-                except Exception as e:
-                    raise Exception(f'Error downloading file: {download_path}\nOriginal exception: {e}')
             
     @staticmethod
     def list_local_objects(local_folder: str) -> set():
@@ -54,12 +70,12 @@ class XNATSync:
 
         xnat_paths = set()
 
-        # might be a more efficient way to do this
+        #TODO might be a more efficient way to do this
         for subject in project.subjects.values():
             for exp in subject.experiments.values():
                 for scan in exp.scans.values():
                     for resource in scan.resources.values():
                         for file in resource.files.values():
-                            xnat_paths.add(file.uri)
+                            xnat_paths.add(file.uri[1:])
         
         return xnat_paths
