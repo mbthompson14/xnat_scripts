@@ -2,8 +2,9 @@ from XNATSync import XNATSync
 
 def main():
     HOST = 'https://xnatccn.semel.ucla.edu/'
-    PROJECT_ID = 'RADCO'
+    PROJECT_ID = 'sync_test'
     LOCAL = 'RawDICOM'
+    LOGS = 'LOGS'
 
     sync = XNATSync()
     sync.sync(host=HOST,project_id=PROJECT_ID,local=LOCAL)
