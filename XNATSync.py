@@ -1,37 +1,50 @@
-import os
+import sys
 import xnat
-import tempfile
+import zipfile
+import logging
 from pathlib import Path
-from zipfile import ZipFile
+from datetime import datetime
+
 
 # https://stackoverflow.com/questions/56892490/sync-local-folder-to-s3-bucket-using-boto3
 
 class XNATSync:
-    def __init__(self) -> None:
+    def __init__(self, logs: str, log_level: int = logging.INFO) -> None:
         self._xnat = xnat
+        self.logger = logging.basicConfig(level=log_level, 
+                            format='%(asctime)s %(levelname)s: %(message)s',
+                            handlers=[
+                                logging.FileHandler(f'{logs}/sync_xnat_{datetime.now()}.log', mode='w'),
+                                #logging.StreamHandler(sys.stdout)
+                            ])
+        logging.info(f'self.logger: {self.logger}')
 
-    def sync(self, host: str, project_id: str, local: str) -> None:
+    def sync(self, host: str, project_id: str, local_root: str) -> None:
         """
         Sync local & xnat
         """
 
-        local_paths = self.list_local_objects(local_folder=local)
+        logging.info('Starting sync...')
+
+        local_paths = self.list_local_objects(local_folder=local_root)
         #print(local_paths)
 
-        with self._xnat.connect(host, loglevel='INFO') as session:
+        with self._xnat.connect(host, loglevel=logging.root.level, logger=self.logger) as session:
             if project_id in session.projects:
                 project = session.projects[project_id]
                 xnat_paths = self.list_xnat_objects(session, project)
 
-                to_download = xnat_paths - local_paths
-                to_upload = local_paths - xnat_paths
+                to_download = list(xnat_paths - local_paths)
+                print(f'to_download: {to_download}')
+                # to_upload = local_paths - xnat_paths
+                # print(f'to_upload: {to_upload}')
 
-                #self.download(session, local, to_download)
-                self.upload(session, local, to_upload)
+                self.download(session=session, project=project, local_root=local_root, to_download=to_download)
+                #self.upload(session, local, to_upload)
 
             else:
                 raise Exception("Project ID not found in XNAT")
-            
+
     @staticmethod
     def list_local_objects(local_folder: str) -> set():
         
@@ -72,19 +85,20 @@ class XNATSync:
                         adj_uri = list(Path(file['URI'][1:]).parts)
                         adj_uri.insert(1,f'projects/{project.id}/subjects/{subject.label}')
                         xnat_paths.add(str(Path(*adj_uri)))
-        print(f'xnat paths: {xnat_paths}')
+        #print(f'xnat paths: {xnat_paths}')
         return xnat_paths
 
-    def download(self, session, local: str, to_download: set()) -> None:
+    def download(self, session, project, local_root: str, to_download: list()) -> None:
+
+        to_download = self._download_folder(session=session, to_download=to_download, dir_level='subject', local_root=local_root)
+
+        to_download = self._download_folder(session=session, to_download=to_download, dir_level='scan', local_root=local_root)
+
+        # dowload remaining individual files
         for download_path in to_download:
                     try:
-                        local_path = Path(local,download_path)
-
-                        try:
-                            local_path.parent.mkdir(parents=True,exist_ok=True)
-                        except Exception as e:
-                             raise Exception(f'Problem creating local directory: {local_path.parent}\nOriginal exception: {e}')
-                        
+                        local_path = Path(local_root,download_path)
+                        local_path.parent.mkdir(parents=True,exist_ok=True)
                         session.download(uri='/'+download_path,target=local_path)
 
                         #TODO need to find a faster way to download
@@ -105,35 +119,67 @@ class XNATSync:
                         # third, download all new files that were not part of the new scans
                             # download remaining paths individually
 
-                        
-                        # with tempfile.TemporaryFile() as temp_path:
-                        #     session.download_stream('/' + download_path, temp_path, format='zip', verbose=True)
-
-                        #     with ZipFile(temp_path) as zip_file:
-                        #         zip_file.extractall(local_path)
-                        
+                    # add the directory does not exist exception here
                     except Exception as e:
-                        raise Exception(f'Problem downloading file: {download_path}\nOriginal exception: {e}')
+                        logging.warning(f'Problem downloading file/directory: {download_path}\nOriginal exception: {e}')
+                        continue
+
+    def _download_folder(self, session, to_download: list(), dir_level: str, local_root: str) -> set():
+
+        if dir_level == 'subject':
+            dir_level = 4
+        elif dir_level == 'scan':
+            dir_level = 8
+        else:
+            raise Exception('Download directory level not defined correctly. Allowed values: ["subject","scan"]')
+
+        unique_objects = set([str(Path(*Path(path).parts[:dir_level+1])) for path in to_download])
+        print(f'unique_{dir_level}: {unique_objects}')
+
+        for object_path in unique_objects:
+            local_path = Path(local_root,object_path)
+            if Path(local_path).exists():
+                continue
+            else:
+                object_id = Path(object_path).parts[dir_level]
+                local_path.mkdir(parents=True)
+                try:
+                    session.create_object('/'+object_path).download_dir(target_dir=local_path)
+                except zipfile.BadZipFile as e:
+                    logging.warning(f'Problem zipping/unzipping: {object_path}. Will try downloading individual files.\nOriginal exception: {e}')
+                    continue
+                except Exception as e:
+                    logging.warning(f'Problem downloading: {object_path}. Will try downloading individual files.\nOriginal exception: {e}')
+                    continue
+                else:
+                    to_download = [path for path in to_download if Path(path).parts[dir_level] != object_id]
+
+        return to_download
 
     def upload(self, session, local: str, to_upload: set()) -> None:
 
-        unique_scans = set([str(Path(*Path(path).parts[:9])) for path in to_upload])
+        unique_exp = set([str(Path(*Path(path).parts[:7])) for path in to_upload])
+        print(f'unique_exp: {unique_exp}')
 
-        # TODO zip each scan folder
+        # /archive/projects/PROJECT/subjects/SUBJECT/experiments/LABEL
+        # Importing to this url would allow you to merge content with previously archived data.
 
-        # TODO how to upload individual files in the correct format
+        # import_dir by experiment may handle conflicting files by itself
 
-        for upload_path in unique_scans:  # for individual upload, upload_path in to_upload
+        for upload_path in unique_exp:  # for individual upload, upload_path in to_upload
             try:
                 local_path = Path(local,upload_path)
                 parts = list(Path(upload_path).parts)
                 parts[0] = 'archive'
                 parts[2] = 'sync_test'
-                session.services.import_(local_path, 
-                                        #project='sync_test', 
+                session.services.import_dir(local_path, 
                                         destination='/'+str(Path(*parts)),
-                                        overwrite = 'none',
-                                        import_handler = 'SI')
+                                        overwrite = 'none')
+                
+            except xnat.exceptions.XNATUploadError as e:
+                logging.exception(f'Problem uploading file/directory: {upload_path}\nOriginal exception: {e}')
+                continue
             except Exception as e:
-                 raise Exception(f'Problem with file: {upload_path}\nOriginal exception: {e}')
+                logging.exception(f'Unknown problem uploading file/directory: {upload_path}\nOriginal exception: {e}')
+                continue
 

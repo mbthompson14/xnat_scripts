@@ -1,40 +1,41 @@
 from XNATSync import XNATSync
+import argparse
+import logging
+import os
 
 def main():
     HOST = 'https://xnatccn.semel.ucla.edu/'
-    PROJECT_ID = 'sync_test'
+    PROJECT_ID = 'RADCO'
     LOCAL = 'RawDICOM'
-    LOGS = 'LOGS'
+    LOGS = 'logs'
 
-    sync = XNATSync()
-    sync.sync(host=HOST,project_id=PROJECT_ID,local=LOCAL)
+    # make directories if they don't exist
+    os.makedirs(LOGS+'/', exist_ok=True) # can use pathlib if also need to make parent directories
+    os.makedirs(LOCAL+'/', exist_ok=True)
+
+    # define parser
+    parser = argparse.ArgumentParser(
+                        prog='sync_xnat.py',
+                        description='This script copies all RADCO dicom files on the XNAT server to the rawDicom folder on nyx3, \
+                            that do not already exist on nyx3, preserving directory structure')
+
+    # add debug option
+    parser.add_argument('-d','--debug',
+                        help='display detailed logging info for debugging',
+                        action='store_true',
+                        default=False)
+
+    # parse arguments from terminal
+    args = parser.parse_args()
+
+    # set logging level
+    if args.debug:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+
+    sync = XNATSync(logs=LOGS,log_level=level)
+    sync.sync(host=HOST,project_id=PROJECT_ID,local_root=LOCAL)
 
 if __name__ == '__main__':
     main()
-
-
-
-"""
-Traceback (most recent call last):
-  File "/Users/matthew/Repos/radco/XNATSync.py", line 30, in sync
-    session.download(uri=download_path,target=Path(local,download_path))
-  File "/Users/matthew/anaconda3/lib/python3.10/site-packages/xnat/session.py", line 722, in download
-    with open(target, 'wb') as out_fh:
-FileNotFoundError: [Errno 2] No such file or directory: '/data/projects/RADCO/subjects/XNAT_S04887/experiments/XNAT_E04884/scans/47/resources/5234/files/MR.1.3.12.2.1107.5.2.43.166010.2023032016050412509012675.dcm'
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "/Users/matthew/Repos/radco/test.py", line 12, in <module>
-    main()
-  File "/Users/matthew/Repos/radco/test.py", line 9, in main
-    sync.sync(host=HOST,project_id=PROJECT_ID,local=LOCAL)
-  File "/Users/matthew/Repos/radco/XNATSync.py", line 32, in sync
-    raise Exception(f'Error downloading file: {download_path}\nOriginal exception: {e}')
-Exception: Error downloading file: /data/projects/RADCO/subjects/XNAT_S04887/experiments/XNAT_E04884/scans/47/resources/5234/files/MR.1.3.12.2.1107.5.2.43.166010.2023032016050412509012675.dcm
-Original exception: [Errno 2] No such file or directory: '/data/projects/RADCO/subjects/XNAT_S04887/experiments/XNAT_E04884/scans/47/resources/5234/files/MR.1.3.12.2.1107.5.2.43.166010.2023032016050412509012675.dcm'
-(base) matthew@PSYCH-GEN-186 radco % 
-
- #TODO: NEED TO CREATE DIRECTORY FIRST?
- # OR MAYBE IT CANT FIND THE PATH ON XNAT
-"""
