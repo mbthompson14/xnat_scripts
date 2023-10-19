@@ -18,7 +18,7 @@ class XNATSync:
                                 #logging.StreamHandler(sys.stdout)
                             ])
     
-    def sync(self, host: str, project_id: str, local_root: str) -> None:
+    def sync(self, host: str, project_id: str, local_root: str, granularity: str = 'scans') -> None:
 
         logging.info('Starting sync...')
 
@@ -26,7 +26,7 @@ class XNATSync:
             if project_id in session.projects:
                 project = session.projects[project_id]
                 
-                self._download_loop(session=session, project=project, local_root=local_root)
+                self._download_loop(session=session, project=project, local_root=local_root, granularity=granularity)
 
                 # self._upload
 
@@ -73,35 +73,42 @@ class XNATSync:
     #                         self._check_download_file(session=session,uri=file_uri,path=file_path)
 
 
-    def _download_loop(self, session: xnat.session.XNATSession, project, local_root: str) -> None:
+    def _download_loop(self, session: xnat.session.XNATSession, project, local_root: str, granularity: str = 'scans') -> None:
 
         project_uri = Path('/data','projects',project.id)
         project_path = Path(local_root,project.id)
         project_path_index = 1
 
-        self._check_download(session=session,uri=project_uri,path=project_path,path_index=project_path_index)
+        downloaded = self._check_download(session=session,uri=project_uri,path=project_path,path_index=project_path_index)
+        if downloaded:
+            return
 
         for subject in project.subjects.values():
-
             subject_uri = Path(project_uri,'subjects',subject.label)
             subject_path = Path(project_path,subject.label)
             subject_path_index = 2
 
-            self._check_download(session=session,uri=subject_uri,path=subject_path,path_index=subject_path_index)
+            downloaded = self._check_download(session=session,uri=subject_uri,path=subject_path,path_index=subject_path_index)
+            if downloaded:
+                continue
 
             for exp in subject.experiments.values():
                 exp_uri = Path(subject_uri,'experiments',exp.id)
                 exp_path = Path(subject_path,exp.label)
                 exp_path_index = 3
 
-                self._check_download(session=session,uri=exp_uri,path=exp_path,path_index=exp_path_index)
+                downloaded = self._check_download(session=session,uri=exp_uri,path=exp_path,path_index=exp_path_index)
+                if downloaded:
+                    continue
 
                 for scan in exp.scans.values():
                     scan_uri = Path(exp_uri,'scans',scan.id)
-                    scan_path = Path(exp_path,'scans','-'.join((scan.id,scan._overwrites['type'])))
+                    scan_path = Path(exp_path,'scans','-'.join((scan.id,scan._overwrites['type'].replace(' ','_'))))
                     scan_path_index = 3
 
-                    self._check_download(session=session,uri=scan_uri,path=scan_path,path_index=scan_path_index)
+                    downloaded = self._check_download(session=session,uri=scan_uri,path=scan_path,path_index=scan_path_index)
+                    if downloaded:
+                        continue
 
                     for resource in scan.resources.values():
                         resource_uri = Path(scan_uri,'resources',resource.id)
@@ -110,15 +117,23 @@ class XNATSync:
 
                         self._check_download(session=session,uri=resource_uri,path=resource_path,path_index=resource_path_index)
 
-                        for file in resource.files:
-                            file_uri = Path(resource_uri,'files',file)
-                            file_path = Path(resource_path,'files',file)
+                        if granularity == 'files':
+                            for file in resource.files.values():
+                                file_uri = Path(resource_uri,'files',file.id)
 
-                            self._check_download_file(session=session,uri=file_uri,path=file_path)
+                                if file.name.startswith(exp.id):
+                                    file_name = file.name.replace(exp.id,exp.label)
+                                    file_path = Path(resource_path,'files',file_name)
+                                else:
+                                    file_path = Path(resource_path,'files',file.name)
+
+                                self._check_download_file(session=session,uri=file_uri,path=file_path)
+                        else:
+                            continue
 
 
-    def _check_download(self, session: xnat.session.XNATSession, uri: pathlib.PosixPath, path: pathlib.PosixPath, path_index: int) -> None:
-
+    def _check_download(self, session: xnat.session.XNATSession, uri: pathlib.PosixPath, path: pathlib.PosixPath, path_index: int) -> bool:
+        
         logging.debug('In _check_download')
         logging.debug(f'uri: {uri}')
         logging.debug(f'path: {path}')
@@ -130,11 +145,13 @@ class XNATSync:
             except Exception as e:
                 logging.warning(f'Problem downloading: {path}. Will try downloading as sub-directories/files.')
                 logging.debug(f'Original exception: {e}')
+                return False
             else:
                 logging.debug(f'Downloaded successfully: {path}')
+                return True
         else:
             logging.debug('Path is a local directory and not empty. Moving on.')
-            return
+            return False
         
     def _check_download_file(self, session: xnat.session.XNATSession, uri: pathlib.PosixPath, path: pathlib.PosixPath) -> None:
 
