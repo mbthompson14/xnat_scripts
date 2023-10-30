@@ -1,7 +1,6 @@
 
 .DS_Store
-RawDICOM/
-RawDICOM_d/
+Raw*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

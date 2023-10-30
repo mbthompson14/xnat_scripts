@@ -4,3 +4,5 @@ CCN MRI dicoms to XNAT?
 
 2023-10-18 21:16:48,526 INFO: Downloaded resource path to RawDICOM/RADCO/RAD22_GSU_BU099-039AKb_01/M39968740/scans/4-T1w_MPR_vNav_4e_ND_RMS/resources/DICOM/files
 2023-10-18 21:16:48,526 DEBUG: Downloaded successfully: RawDICOM/RADCO/RAD22_GSU_BU099-039AKb_01/M39968740/scans/4-T1w_MPR_vNav_4e_ND RMS/resources/DICOM
+
+On some systems the guessed mimetype of a zip file might not be application/zip but be something like application/x-zip-compressed. In that case you might have to set the content_type parameter to application/zip manually.

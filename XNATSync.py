@@ -1,9 +1,8 @@
 
-
-
 import xnat
 import logging
 import pathlib
+import timeit
 from pathlib import Path
 from datetime import datetime
 
@@ -26,52 +25,12 @@ class XNATSync:
             if project_id in session.projects:
                 project = session.projects[project_id]
                 
-                self._download_loop(session=session, project=project, local_root=local_root, granularity=granularity)
+                #self._download_loop(session=session, project=project, local_root=local_root, granularity=granularity)
 
-                # self._upload
+                self._upload_loop(session=session, project=project, local_root=local_root)
 
             else:
                 raise Exception("Project ID not found in XNAT")
-            
-
-    # def _download_loop(self, session: xnat.session.XNATSession, project, local_root: str) -> None:
-
-    #     project_uri = Path('/data','projects',project.id)
-    #     project_path = Path(local_root,'data','projects',project.id)
-
-    #     self._check_download(session=session,uri=project_uri,path=project_path)
-
-    #     for subject in project.subjects.values():
-
-    #         subject_uri = Path(project_uri,'subjects',subject.label)
-    #         subject_path = Path(project_path,'subjects',subject.label)
-
-    #         self._check_download(session=session,uri=subject_uri,path=subject_path)
-
-    #         for exp in subject.experiments.values():
-    #             exp_uri = Path(subject_uri,'experiments',exp.id)
-    #             exp_path = Path(subject_path,'experiments',exp.label)
-
-    #             self._check_download(session=session,uri=exp_uri,path=exp_path)
-
-    #             for scan in exp.scans.values():
-    #                 scan_uri = Path(exp_uri,'scans',scan.id)
-    #                 scan_path = Path(exp_path,'scans','-'.join((scan.id,scan._overwrites['type'])))
-
-    #                 self._check_download(session=session,uri=scan_uri,path=scan_path)
-
-    #                 for resource in scan.resources.values():
-    #                     resource_uri = Path(scan_uri,'resources',resource.id)
-    #                     resource_path = Path(scan_path,'resources',resource.label)
-
-    #                     self._check_download(session=session,uri=resource_uri,path=resource_path)
-
-    #                     for file in resource.files:
-    #                         file_uri = Path(resource_uri,'files',file)
-    #                         file_path = Path(resource_path,'files',file)
-
-    #                         self._check_download_file(session=session,uri=file_uri,path=file_path)
-
 
     def _download_loop(self, session: xnat.session.XNATSession, project, local_root: str, granularity: str = 'scans') -> None:
 
@@ -131,7 +90,6 @@ class XNATSync:
                         else:
                             continue
 
-
     def _check_download(self, session: xnat.session.XNATSession, uri: pathlib.PosixPath, path: pathlib.PosixPath, path_index: int) -> bool:
         
         logging.debug('In _check_download')
@@ -171,170 +129,164 @@ class XNATSync:
         else:
             logging.debug('Path is a local file. Moving on.')
             return
-
-
-
-
-
-
-
-
-    ###################
-    # Failed Attempts #
-    ###################
-
-    # def _download_recur(self, session: xnat.session.XNATSession, current_dir, local_root: str, subject_label: str = None) -> None:
-
-    #     # get URI
-    #     uri = current_dir.uri
-
-    #     # get local path
-    #     if isinstance(current_dir, session.classes.SubjectData):
-    #         subject_label = current_dir.label
-    #         path = Path(local_root, *Path(uri[1:]).parts[:-1], subject_label)
-    #         logging.warning(f'SUBJECT PATH: {path}')
-    #     elif isinstance(current_dir, session.classes.MrSessionData):
-    #         temp_path = [local_root, *Path(uri[1:]).parts[:-1], current_dir.label]
-    #         temp_path[5] = subject_label
-    #         path = Path(*temp_path)
-    #         logging.warning(f'EXP PATH: {path}')
-    #     elif isinstance(current_dir, session.classes.MrScanData):
-    #         temp_path = [local_root, *Path(uri[1:]).parts[:-1], '-'.join((current_dir.id,current_dir._overwrites['type']))]
-    #         temp_path[5] = subject_label
-    #         temp_path[7] = session.experiments[current_dir.image_session_id].label
-    #         path = Path(*temp_path)
-    #         logging.warning(f'SCAN PATH: {path}')
-    #     elif isinstance(current_dir, session.classes.ResourceCatalog):
-    #         temp_path = [local_root, *Path(uri[1:]).parts[:-1], current_dir.label]
-    #         #print(str(Path(*Path(uri).parts[:10])))
-    #         #temp_scan = session.get_object(str(Path(*Path(uri).parts[:10])))
-    #         temp_scan = session.experiments[Path(uri[1:]).parts[8]]  # FIXME
-    #         temp_path[5] = subject_label
-    #         temp_path[7] = session.experiments[temp_scan.image_session_id].label
-    #         temp_path[9] = '-'.join((temp_scan.id,temp_scan._overwrites['type']))
-    #         path = Path(*temp_path)
-    #         logging.warning(f'RESOURCE PATH: {path}')
-    #         #temp_path[7] = session.create_object(Path(uri).parts[:7]).label
-    #     else:
-    #         path = Path(local_root, current_dir.uri[1:])
-    #         logging.warning(f'OTHER PATH: {path}')
-
-    #     if not path.is_dir():
-    #         try:
-    #             session.create_object(uri).download_dir(Path(*path.parts[:-3]))
-    #         except Exception as e:
-    #             logging.warning(f'Problem downloading: {path}. Will try downloading as sub-directories/files.')
-    #             logging.debug(f'Original exception: {e}')
         
-    #     match current_dir:
-    #         case session.classes.SubjectData():
-    #             child_attr = 'experiments'
-    #         case session.classes.MrSessionData():
-    #             child_attr = 'scans'
-    #         case session.classes.MrScanData():
-    #             child_attr = 'resources'
-    #         case session.classes.ResourceCatalog():
-    #             child_attr = 'files'
-    #         case session.classes.FileData():
-    #             child_attr = None
-    #         case _:
-    #             child_attr = None
+    def _upload_loop(self, session: xnat.session.XNATSession, project: str, local_root: str) -> None:
 
-    #     if child_attr and hasattr(current_dir, child_attr):
-    #         for child_dir in getattr(current_dir,child_attr).values():
-    #             self._download_recur(session=session, current_dir=child_dir, local_root=local_root, subject_label=subject_label)
-    #     else:
-    #         logging.debug(f'Reached end of subject directory structure: {current_dir}')
-    #         return
+        ## IS IT POSSIBLE TO UPLOAD THE ENTIRE PROJECT BUT SET OVERWRITE TO NONE????##
+        ## I don't think so...
+
+        logging.debug('In _upload_loop')
+
+        for path in Path(local_root).rglob('*'):
+
+            start = timeit.default_timer()
+            
+            if path.name == '.DS_Store':
+                continue
+
+            path_str = str(path)
+            parts = Path(path_str.replace(f'{local_root}/','')).parts
+            #dest = f'/archive/projects/{project_id}'
+
+            #print(f'path: {parts}')
+
+            if len(parts):
+                #print('in len parts')
+                #print(len(parts))
+
+                project_id = parts[0]
+
+                if project_id != project.id:
+                    logging.warning(f'Local project directory name ({project_id}) does not match project ID in XNAT ({project.id})')
+
+                #file_obj = connection.projects['project'].subjects['S'].experiments['EXP'].scans['T1'].resources['DICOM'].files[0]
+
+                if len(parts) == 1:
+                    continue
+                elif len(parts) >= 2:
+                    subject = parts[1]
+                    try:
+                        logging.debug(f'Checking if subject {subject} exists in XNAT')
+                        assert session.projects[project_id].subjects[subject]
+                    except:
+                        logging.info(f'Subject {subject} does not exist in XNAT, attempting to upload...')
+                        try:
+                            #import_path = str(Path(*Path(import_path).parts[:2]))
+                            session.services.import_dir(directory=path, project=project_id, subject=subject)
+                        except Exception as e:
+                            logging.info(f'Subject {subject} failed to upload, will try uploading as subdirectories')
+                            logging.debug(f'Original exception: {e}')
+                            # if len(parts) >= 3:
+                            #     exp = parts[2]
+                            #     try:
+                            #         logging.debug(f'Checking if experiment {exp} exists in XNAT')
+                            #         assert session.projects[project_id].subjects[subject].experiments[exp]
+                            #     except:
+                            #         logging.info(f'Experiment {exp} does not exist in XNAT, attempting to upload...')
+                            #         try:
+                            #             #import_path = str(Path(*Path(import_path).parts[:3]))
+                            #             session.services.import_dir(directory=path, destination=dest, project=project_id, subject=subject, experiment=exp)
+                            #         except Exception as e:
+                            #             logging.info(f'Experiment {exp} failed to upload, will try uploading as subdirectories')
+                            #             logging.debug(f'Original exception: {e}')
+                            #             if len(parts) >=4:
+                            #                 scan = parts[3]
+                            #                 try:
+                            #                     logging.debug(f'Checking if scan {scan} exists in XNAT')
+                            #                     assert session.projects[project_id].subjects[subject].experiments[exp].scan[scan]
+                            #                 except:
+                            #                     logging.info(f'Scan {scan} does not exist in XNAT, attempting to upload...')
+                            #                     try:
+                            #                         #import_path = str(Path(*Path(import_path).parts[:4]))
+                            #                         session.services.import_dir(directory=path, destination=dest, project=project_id, subject=subject, experiment=exp)
+                            #                     except Exception as e:
+                            #                         logging.info(f'Scan {scan} failed to upload, will try uploading as subdirectories')
+                            #                         logging.debug(f'Original exception: {e}')
+                            #                     else:
+                            #                         logging.info(f'Scan {scan} uploaded successfully')
+                            #                         continue
+                            #             else:
+                            #                 continue
+                            #         else:
+                            #             logging.info(f'Experiment {exp} uploaded successfully')
+                            #             continue
+                            # else:
+                            #     continue
+                        else:
+                            logging.info(f'Subject {subject} uploaded successfully')
+                            continue
+                    else:
+                        logging.info(f'Subject {subject} already exisits in XNAT')
+                else:
+                    continue
+
+            logging.debug(f'UPLOAD ELAPSED TIME : {path} : {timeit.default_timer() - start}')               
 
 
 
-    # recursively check if directory/file exists
-    # if no, try to download
-    # if yes, check if child directories/files exists
-    # etc.
-    # def _download_recur1(self, session, parent_dir, local_root: str, **kwargs) -> None:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                #self._check_upload(session=session, path=str(path_rel), project_id=project_id, subject=subject, exp=exp)
+
+                
+                
+
+                # self._check_upload(session=session, path=path_rel, project_id=project_id)
+
+                # if len(path_rel.parts) < 1:
+                #     subject = path_rel.parts[1]
+                #     self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject)
+                    
+                #     if len(path_rel.parts) > 2:
+                #         exp = path_rel.parts[2]
+                #         self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject, exp=exp)
+
+                #         if len(path_rel.parts) > 3:
+                #             scan = path_rel.parts[3]
+                #             self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject, exp=exp)
+
+                #             if len(path_rel.parts) > 4:
+                #                 resource = path_rel.parts[4]
+                #                 self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject, exp=exp)
+
+                                # if len(path_rel.parts) > 5:
+                                #     file = path_rel.parts[5]
+                                #     self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject, exp=exp)
+
+    # def _check_upload(self, session, path: pathlib.PosixPath, project_id: str | None = None, subject: str | None = None, 
+    #                   exp: str | None = None):
+    #     pass
+    #     # does it exist on xnat?
         
-    #     match parent_dir:
-    #         # case session.classes.ProjectData():
-    #         #     child_attr = 'subjects'
-    #         case session.classes.SubjectData():
-    #             child_attr = 'experiments'
-    #         case session.classes.MrSessionData():
-    #             child_attr = 'scans'
-    #         case session.classes.MrScanData():
-    #             child_attr = 'resources'
-    #         case session.classes.ResourceCatalog():
-    #             child_attr = 'files'
-    #         case session.classes.FileData():
-    #             child_attr = None
-    #         case _:
-    #             child_attr = None
+    #     # if any(path.iterdir()):
+    #     #     session.import_dir(directory=path)
 
-    #     #for attr in ('subjects','experiments','scans','resources'):
-    #     if child_attr and hasattr(parent_dir, child_attr):
-    #         for child_dir in getattr(parent_dir,child_attr).values():
-    #             uri = child_dir.uri
-
-    #             if isinstance(child_dir, session.classes.SubjectData):
-    #                 subject_label = child_dir.label
-    #                 path = Path(local_root, *Path(uri[1:]).parts[:-1], subject_label)
-    #                 logging.warning(f'PROJECT PATH: {path}')
-    #             elif isinstance(child_dir, session.classes.MrSessionData):
-    #                 temp_path = [local_root, *Path(uri[1:]).parts[:-1], child_dir.label]
-    #                 temp_path[5] = subject_label
-    #                 path = Path(*temp_path)
-    #                 logging.warning(f'EXP PATH: {path}')
-    #             elif isinstance(child_dir, session.classes.MrScanData):
-    #                 temp_path = [local_root, *Path(uri[1:]).parts[:-1], '-'.join((child_dir.id,child_dir._overwrites['type']))]
-    #                 temp_path[5] = subject_label
-    #                 temp_path[7] = session.experiments[child_dir.image_session_id].label
-    #                 path = Path(*temp_path)
-    #                 logging.warning(f'SCAN PATH: {path}')
-    #             elif isinstance(child_dir, session.classes.ResourceCatalog):
-    #                 temp_path = [local_root, *Path(uri[1:]).parts[:-1], child_dir.label]
-    #                 #print(str(Path(*Path(uri).parts[:10])))
-    #                 #temp_scan = session.get_object(str(Path(*Path(uri).parts[:10])))
-    #                 temp_scan = session.experiments[Path(uri[1:]).parts[8]]
-    #                 temp_path[5] = subject_label
-    #                 temp_path[7] = session.experiments[temp_scan.image_session_id].label
-    #                 temp_path[9] = '-'.join((temp_scan.id,temp_scan._overwrites['type']))
-    #                 path = Path(*temp_path)
-    #                 logging.warning(f'RESOURCE PATH: {path}')
-    #                 #temp_path[7] = session.create_object(Path(uri).parts[:7]).label
-    #             else:
-    #                 path = Path(local_root, child_dir.uri[1:])
-    #                 logging.warning(f'OTHER PATH: {path}')
-
-    #             if not path.is_dir():
-    #                 try:
-    #                     session.create_object(uri).download_dir(Path(*path.parts[:-3]))
-    #                 except Exception as e:
-    #                     logging.warning(f'Problem downloading: {path}. Will try downloading as sub-directories/files.')
-    #                     logging.debug(f'Original exception: {e}')
-                        
-    #             self._download_recur(session=session, parent_dir=child_dir, local_root=local_root, subject_label=subject_label)
-
-    #     else:
-    #         logging.debug(f'Reached end of subject directory structure: {parent_dir}')
-    #         return
-
-
-    # def _download(self, session, parent_dir) -> None:
-
+    # def _check_exist_xnat(self, session: xnat.session.XNATSession, parts: tuple):
+    #     project_id = parts[0]
     #     try:
-    #         session.create_object(parent_dir.custom_variables['uri']).download_dir(parent_dir.custom_variables['path'].parts[:-3])
+    #         obj = session.projects[project_id]
     #     except:
-    #         print('problemo')
-    #         for child_dir in parent_dir.custom_variables['children']:
-    #             self._download(session=session,parent_dir=child_dir)
+    #         return False
+    #     else:
+    #         return True
+    #     if len(parts) == 1:
+    #         project_id = parts[0]
+    #         try:
+    #             obj = session.projects[project_id]
+    #         except:
+    #             return False
+    #         else:
+    #             return True
 
-
-        # try:
-        #     session.create_object('/'+object_path).download_dir(local_path)
-        # except zipfile.BadZipFile as e:
-        #     logging.warning(f'Problem zipping/unzipping: {object_path}. Will try downloading individual files.\nOriginal exception: {e}')
-        #     continue
-        # except Exception as e:
-        #     logging.warning(f'Problem downloading: {object_path}. Will try downloading individual files.\nOriginal exception: {e}')
-        #     continue

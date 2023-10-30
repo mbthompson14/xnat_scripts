@@ -5,8 +5,8 @@ import os
 
 def main():
     HOST = 'https://xnatccn.semel.ucla.edu/'
-    PROJECT_ID = 'RADCO'
-    LOCAL = 'RawDICOM'
+    PROJECT_ID = 'sync_test'
+    LOCAL = 'RawDICOM_edit'
     LOGS = 'logs'
 
     # make directories if they don't exist
@@ -44,7 +44,7 @@ def main():
     else:
         granularity = 'scans'
 
-    sync = XNATSync(logs=LOGS,log_level=level)
+    sync = XNATSync(logs=LOGS,log_level=logging.DEBUG)  # change log_level
     sync.sync(host=HOST,project_id=PROJECT_ID,local_root=LOCAL,granularity=granularity)
 
 if __name__ == '__main__':
