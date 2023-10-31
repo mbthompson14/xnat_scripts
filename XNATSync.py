@@ -22,7 +22,7 @@ class XNATSync:
 
         logging.info('Starting sync...')
 
-        with self._xnat.connect(host, loglevel=logging.root.level) as session:
+        with self._xnat.connect(server=host, default_timeout = 600, loglevel=logging.root.level) as session:
             if project_id in session.projects:
                 project = session.projects[project_id]
                 project_path = str(Path(local_root,project.id))
@@ -260,6 +260,8 @@ class XNATSync:
     def _upload(self, session: xnat.session.XNATSession, project: str, path: str, depth: int, local_root: str = '') -> None:
         """Recursively list files and directories up to a certain depth"""
 
+        start = timeit.default_timer()
+
         depth -= 1
         #print('IN UPLOAD')
 
@@ -283,8 +285,13 @@ class XNATSync:
                         if len(parts) == 2:
                             assert session.projects[project_id].subjects[parts[1]]
                         elif len(parts) == 3:
-                            assert session.projects[project_id].experiments[parts[2]]
-                        # could add assertions for sub directories !!!
+                            assert session.projects[project_id].subjects[parts[1]].experiments[parts[2]]
+                        elif len(parts) == 5:
+                            assert session.projects[project_id].subjects[parts[1]].experiments[parts[2]].scans[parts[4].split(sep='-')[0]]
+                        # could add assertions for more sub directories !!!
+                        else:
+                            logging.warning(f'Directory {xnat_dir} not a subject, experiment, or scan. Skipping upload.')
+                            continue
                     except Exception as e:
                         logging.info(f'Directory {xnat_dir} does not exist in XNAT, attempting to upload...')
                         logging.debug(f'Original exception: {e}')
@@ -297,10 +304,12 @@ class XNATSync:
                                 self._upload(self, project=project, path=entry.path, depth=depth)
                         else:
                             logging.info(f'Directory {xnat_dir} successfully uploaded to XNAT')
+                            logging.debug(f'UPLOAD ELAPSED TIME : {xnat_dir} : {timeit.default_timer() - start}')
                             continue
                     else:
                         logging.info(f'Directory {xnat_dir} exists in XNAT, moving on (either to subdirectory or next subject, depending on granularity)')
-                        self._upload(self, project=project, path=entry.path, depth=depth)
+                        if entry.is_dir() and depth > 0:
+                          self._upload(self, project=project, path=entry.path, depth=depth)
 
                         
 
