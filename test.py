@@ -6,7 +6,7 @@ import os
 def main():
     HOST = 'https://xnatccn.semel.ucla.edu/'
     PROJECT_ID = 'sync_test'
-    LOCAL = 'RawDICOM_edit'
+    LOCAL = 'test_data'
     LOGS = 'logs'
 
     # make directories if they don't exist

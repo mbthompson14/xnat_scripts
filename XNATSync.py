@@ -1,12 +1,12 @@
 
 import os
+import time
 import xnat
 import logging
 import pathlib
 import timeit
 from pathlib import Path
 from datetime import datetime
-
 
 class XNATSync:
     def __init__(self, logs: str, log_level: int = logging.INFO) -> None:
@@ -25,11 +25,15 @@ class XNATSync:
         with self._xnat.connect(server=host, default_timeout = 600, loglevel=logging.root.level) as session:
             if project_id in session.projects:
                 project = session.projects[project_id]
-                project_path = str(Path(local_root,project.id))
                 
                 #self._download_loop(session=session, project=project, local_root=local_root, granularity=granularity)
 
-                self._upload(session=session, project=project, local_root=local_root, path=project_path, depth=2)
+                # depth
+                # subject = 1
+                # exp = 2
+                # scans = 4
+
+                self._upload(session=session, project=project, local_root=local_root, depth=2)
 
             else:
                 raise Exception("Project ID not found in XNAT")
@@ -130,251 +134,104 @@ class XNATSync:
                 logging.debug(f'Downloaded successfully: {path}')
         else:
             logging.debug('Path is a local file. Moving on.')
-            return
-        
+            return        
 
-
-    # def _upload_loop(self, session: xnat.session.XNATSession, project: str, local_root: str) -> None:
-
-    #     for path in self._walk(path=local_root, depth=2):
-
-    #         parts = Path(path.replace(f'{local_root}/','')).parts
-    #         project_id = parts[0]
-    #         subject = parts[1]
-
-    #         try:
-    #             logging.debug(f'Checking if subject {subject} exists in XNAT')
-    #             assert session.projects[project_id].subjects[subject]
-    #         except Exception as e:
-    #             logging.info(f'Subject {subject} does not exist in XNAT, attempting to upload...')
-    #             logging.debug(f'Original exception: {e}')
-    #             try:
-    #                 session.services.import_dir(directory=path, project=project_id, subject=subject)
-    #             except Exception as e:
-    #                 logging.info(f'Subject {subject} failed to upload, will try uploading as subdirectories')
-    #                 logging.debug(f'Original exception: {e}')
-    #         else:
-    #             logging.info(f'Subject {subject} exists in XNAT, moving on (either to subdirectory or next subject, depending on granularity)')
-
-
-
-    # def _upload_loop(self, session: xnat.session.XNATSession, project: str, local_root: str) -> None:
-
-    #     ## IS IT POSSIBLE TO UPLOAD THE ENTIRE PROJECT BUT SET OVERWRITE TO NONE????##
-    #     ## I don't think so...
-
-    #     logging.debug('In _upload_loop')
-
-    #     for path in Path(local_root).rglob('*'):
-
-    #         start = timeit.default_timer()
-            
-    #         if path.name == '.DS_Store':
-    #             continue
-
-    #         path_str = str(path)
-    #         parts = Path(path_str.replace(f'{local_root}/','')).parts
-    #         #dest = f'/archive/projects/{project_id}'
-
-    #         if len(parts):
-    #             project_id = parts[0]
-
-    #             if project_id != project.id:
-    #                 logging.warning(f'Local project directory name ({project_id}) does not match project ID in XNAT ({project.id})')
-
-    #             #file_obj = connection.projects['project'].subjects['S'].experiments['EXP'].scans['T1'].resources['DICOM'].files[0]
-
-    #             if len(parts) == 1:
-    #                 continue
-    #             elif len(parts) >= 2:
-    #                 subject = parts[1]
-    #                 try:
-    #                     logging.debug(f'Checking if subject {subject} exists in XNAT')
-    #                     assert session.projects[project_id].subjects[subject]
-    #                 except Exception as e:
-    #                     logging.info(f'Subject {subject} does not exist in XNAT, attempting to upload...')
-    #                     logging.debug(f'Original exception: {e}')
-    #                     try:
-    #                         #import_path = str(Path(*Path(import_path).parts[:2]))
-    #                         session.services.import_dir(directory=path, project=project_id, subject=subject)
-    #                     except Exception as e:
-    #                         logging.info(f'Subject {subject} failed to upload, will try uploading as subdirectories')
-    #                         logging.debug(f'Original exception: {e}')
-    #                         # if len(parts) >= 3:
-    #                         #     exp = parts[2]
-    #                         #     try:
-    #                         #         logging.debug(f'Checking if experiment {exp} exists in XNAT')
-    #                         #         assert session.projects[project_id].subjects[subject].experiments[exp]
-    #                         #     except:
-    #                         #         logging.info(f'Experiment {exp} does not exist in XNAT, attempting to upload...')
-    #                         #         try:
-    #                         #             #import_path = str(Path(*Path(import_path).parts[:3]))
-    #                         #             session.services.import_dir(directory=path, destination=dest, project=project_id, subject=subject, experiment=exp)
-    #                         #         except Exception as e:
-    #                         #             logging.info(f'Experiment {exp} failed to upload, will try uploading as subdirectories')
-    #                         #             logging.debug(f'Original exception: {e}')
-    #                         #             if len(parts) >=4:
-    #                         #                 scan = parts[3]
-    #                         #                 try:
-    #                         #                     logging.debug(f'Checking if scan {scan} exists in XNAT')
-    #                         #                     assert session.projects[project_id].subjects[subject].experiments[exp].scan[scan]
-    #                         #                 except:
-    #                         #                     logging.info(f'Scan {scan} does not exist in XNAT, attempting to upload...')
-    #                         #                     try:
-    #                         #                         #import_path = str(Path(*Path(import_path).parts[:4]))
-    #                         #                         session.services.import_dir(directory=path, destination=dest, project=project_id, subject=subject, experiment=exp)
-    #                         #                     except Exception as e:
-    #                         #                         logging.info(f'Scan {scan} failed to upload, will try uploading as subdirectories')
-    #                         #                         logging.debug(f'Original exception: {e}')
-    #                         #                     else:
-    #                         #                         logging.info(f'Scan {scan} uploaded successfully')
-    #                         #                         continue
-    #                         #             else:
-    #                         #                 continue
-    #                         #         else:
-    #                         #             logging.info(f'Experiment {exp} uploaded successfully')
-    #                         #             continue
-    #                         # else:
-    #                         #     continue
-    #                     else:
-    #                         logging.info(f'Subject {subject} uploaded successfully')
-    #                         continue
-    #                 else:
-    #                     logging.info(f'Subject {subject} already exisits in XNAT')
-    #             else:
-    #                 continue
-
-    #         logging.debug(f'UPLOAD ELAPSED TIME : {path} : {timeit.default_timer() - start}')               
-
-
-    def _walk(self, path: str, depth: int):
-        """Recursively list files and directories up to a certain depth"""
-        depth -= 1
-        with os.scandir(path) as p:
-            for entry in p:
-                yield entry.path
-                if entry.is_dir() and depth > 0:
-                    yield from self._walk(entry.path, depth)
-
-
-    def _upload(self, session: xnat.session.XNATSession, project: str, path: str, depth: int, local_root: str = '') -> None:
-        """Recursively list files and directories up to a certain depth"""
+    def _upload(self, session: xnat.session.XNATSession, project, depth: int, local_root: str = '') -> None:
+        """"""
 
         start = timeit.default_timer()
+        project_path = str(Path(local_root,project.id))
+        base_depth = project_path.rstrip(os.path.sep).count(os.path.sep)
+        successful_upload = []
 
-        depth -= 1
-        #print('IN UPLOAD')
+        for root, dirs, files in os.walk(top=project_path, topdown=True):
 
-        with os.scandir(path) as p:
-            for entry in p:
-                #print('IN SCAN DIR')
+            # check prearchive for fun
+            for s in session.prearchive.find(project=project.id):
+                logging.debug(f'Prearchive: {s}, {s.status}')
 
-                if entry.name == '.DS_Store':  # can remove once on UCLA server
-                    continue
+            # what does this even do
+            # session.services.refresh_catalog(resource=project)
 
-                parts = Path(entry.path.replace(f'{local_root}/','')).parts
+            cur_depth = root.count(os.path.sep)
+            # logging.info(f'depth: {depth}')
+            # logging.info(f'base_depth: {base_depth}')
+            # logging.info(f'root: {root}')
+            # logging.info(f'cur_depth: {cur_depth}')
+            if cur_depth - base_depth >= depth:
+                logging.info('TOO DEEP, MOVING ON')
+                continue
+
+            for dir in dirs:
+                full_path = str(Path(root,dir))
+                parts = Path(full_path.replace(f'{local_root}/','')).parts
                 xnat_dir = str(Path(*parts))
                 project_id = parts[0]
-
-                if len(parts) == 1:
-                    continue
-                elif len(parts) >= 2:
-                    #print('IN LEN PARTS 2')
-                    try:
-                        logging.debug(f'Checking if directory {xnat_dir} exists in XNAT')
-                        if len(parts) == 2:
-                            assert session.projects[project_id].subjects[parts[1]]
-                        elif len(parts) == 3:
-                            assert session.projects[project_id].subjects[parts[1]].experiments[parts[2]]
-                        elif len(parts) == 5:
-                            assert session.projects[project_id].subjects[parts[1]].experiments[parts[2]].scans[parts[4].split(sep='-')[0]]
-                        # could add assertions for more sub directories !!!
-                        else:
-                            logging.warning(f'Directory {xnat_dir} not a subject, experiment, or scan. Skipping upload.')
-                            continue
-                    except Exception as e:
-                        logging.info(f'Directory {xnat_dir} does not exist in XNAT, attempting to upload...')
-                        logging.debug(f'Original exception: {e}')
-                        try:
-                            session.services.import_dir(directory=entry.path, project=project_id, subject=parts[1])
-                        except Exception as e:
-                            logging.info(f'Directory {xnat_dir} failed to upload, will try uploading as subdirectories')
-                            logging.debug(f'Original exception: {e}')
-                            if entry.is_dir() and depth > 0:
-                                self._upload(self, project=project, path=entry.path, depth=depth)
-                        else:
-                            logging.info(f'Directory {xnat_dir} successfully uploaded to XNAT')
-                            logging.debug(f'UPLOAD ELAPSED TIME : {xnat_dir} : {timeit.default_timer() - start}')
-                            continue
-                    else:
-                        logging.info(f'Directory {xnat_dir} exists in XNAT, moving on (either to subdirectory or next subject, depending on granularity)')
-                        if entry.is_dir() and depth > 0:
-                          self._upload(self, project=project, path=entry.path, depth=depth)
-
-                        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                #self._check_upload(session=session, path=str(path_rel), project_id=project_id, subject=subject, exp=exp)
-
-                
-                
-
-                # self._check_upload(session=session, path=path_rel, project_id=project_id)
-
-                # if len(path_rel.parts) < 1:
-                #     subject = path_rel.parts[1]
-                #     self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject)
                     
-                #     if len(path_rel.parts) > 2:
-                #         exp = path_rel.parts[2]
-                #         self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject, exp=exp)
+                if xnat_dir.count(os.path.sep) == 0:
+                    continue
 
-                #         if len(path_rel.parts) > 3:
-                #             scan = path_rel.parts[3]
-                #             self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject, exp=exp)
+                if successful_upload and (parts[1] in successful_upload):
+                    continue
 
-                #             if len(path_rel.parts) > 4:
-                #                 resource = path_rel.parts[4]
-                #                 self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject, exp=exp)
+                try:
+                    logging.debug(f'Checking if directory {xnat_dir} exists in XNAT')
 
-                                # if len(path_rel.parts) > 5:
-                                #     file = path_rel.parts[5]
-                                #     self._check_upload(session=session, path=path_rel, project_id=project_id, subject=subject, exp=exp)
+                    if len(parts) == 2:
+                        assert session.projects[parts[0]].subjects[parts[1]]
 
-    # def _check_upload(self, session, path: pathlib.PosixPath, project_id: str | None = None, subject: str | None = None, 
-    #                   exp: str | None = None):
-    #     pass
-    #     # does it exist on xnat?
-        
-    #     # if any(path.iterdir()):
-    #     #     session.import_dir(directory=path)
+                    elif len(parts) == 3:
+                        try:
+                            session.projects[parts[0]].subjects[parts[1]].experiments[parts[2]]
+                        except:
+                            exists_in_archive = False
+                        else:
+                            exists_in_archive = True
 
-    # def _check_exist_xnat(self, session: xnat.session.XNATSession, parts: tuple):
-    #     project_id = parts[0]
-    #     try:
-    #         obj = session.projects[project_id]
-    #     except:
-    #         return False
-    #     else:
-    #         return True
-    #     if len(parts) == 1:
-    #         project_id = parts[0]
-    #         try:
-    #             obj = session.projects[project_id]
-    #         except:
-    #             return False
-    #         else:
-    #             return True
+                        exists_in_prearchive = self._check_prearchive(session=session,project=project,subject=parts[1],exp=parts[2])
 
+                        if not exists_in_archive and not exists_in_prearchive:
+                            raise Exception()
+
+                    elif len(parts) == 5:
+                        assert session.projects[parts[0]].subjects[parts[1]].experiments[parts[2]].scans[parts[4].split(sep='-')[0]]
+
+                    # if xnat_dir.count(os.path.sep) == 1:
+                    #     assert session.projects[project_id].subjects[parts[1]]
+                    # elif xnat_dir.count(os.path.sep) == 2:
+                    #     assert session.projects[project_id].subjects[parts[1]].experiments[parts[2]]
+                    # elif xnat_dir.count(os.path.sep) == 4:
+                    #     assert session.projects[project_id].subjects[parts[1]].experiments[parts[2]].scans[parts[4].split(sep='-')[0]]
+                    # could add assertions for more sub directories !!!
+
+                    else:
+                        logging.warning(f'Directory {xnat_dir} not a subject, experiment, or scan. Skipping upload.')
+                        continue
+
+                except Exception as e:
+                    logging.info(f'Directory {xnat_dir} does not exist in XNAT, attempting to upload...')
+                    logging.debug(f'Original exception: {e}')
+                    try:
+                        session.services.import_dir(directory=full_path, project=project_id, subject=parts[1])
+                    except Exception as e:
+                        logging.info(f'Directory {xnat_dir} failed to upload, will try uploading as subdirectories')
+                        logging.debug(f'Original exception: {e}')
+                    else:
+                        logging.info(f'Directory {xnat_dir} successfully uploaded to XNAT')
+                        logging.debug(f'UPLOAD ELAPSED TIME : {xnat_dir} : {timeit.default_timer() - start}')
+                        successful_upload.append(parts[1])
+                else:
+                    logging.info(f'Directory {xnat_dir} exists in XNAT, moving on to next directory or subdirectory')
+
+
+    def _check_prearchive(self, session: xnat.session.XNATSession, project, subject: str, exp: str) -> bool:
+        status_list = ('ARCHIVE PENDING','ARCHIVING NOW','BUILD PENDING','BUILDING NOW','READY')
+
+        for status in status_list:
+            prearchive_search = session.prearchive.find(project=project,subject=subject,session=exp,status=status)
+            logging.debug(f'PREARCHIVE SEARCH: {prearchive_search}')
+            if prearchive_search:
+                return True
+            else:
+                continue
+        return False
