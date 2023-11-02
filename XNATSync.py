@@ -1,7 +1,7 @@
 
 import os
-import time
 import xnat
+import requests
 import logging
 import pathlib
 import timeit
@@ -20,7 +20,7 @@ class XNATSync:
     
     def sync(self, host: str, project_id: str, local_root: str, granularity: str = 'scans') -> None:
 
-        logging.info('Starting sync...')
+        logging.info('BEGIN SYNC')
 
         with self._xnat.connect(server=host, default_timeout = 600, loglevel=logging.root.level) as session:
             if project_id in session.projects:
@@ -33,12 +33,12 @@ class XNATSync:
                 # exp = 2
                 # scans = 4
 
-                self._upload(session=session, project=project, local_root=local_root, depth=2)
+                self._upload(session=session, project=project, local_root=local_root, depth=4)
 
             else:
                 raise Exception("Project ID not found in XNAT")
 
-    def _download_loop(self, session: xnat.session.XNATSession, project, local_root: str, granularity: str = 'scans') -> None:
+    def _download_loop(self, session: xnat.session.XNATSession, project: xnat.mixin.ProjectData, local_root: str, granularity: str = 'scans') -> None:
 
         project_uri = Path('/data','projects',project.id)
         project_path = Path(local_root,project.id)
@@ -136,8 +136,23 @@ class XNATSync:
             logging.debug('Path is a local file. Moving on.')
             return        
 
-    def _upload(self, session: xnat.session.XNATSession, project, depth: int, local_root: str = '') -> None:
-        """"""
+    def _upload(self, session: xnat.session.XNATSession, project: xnat.mixin.ProjectData, depth: int, local_root: str = '') -> None:
+        """
+        Traverses local project directory, uploading folders to XNAT if they do not exist in XNAT
+
+        Can set the directory level (depth) at which to check 1 (subjects), 2 (experiments), 4 (scans).
+        (Possible to add deeper levels in future version, e.g. resources, files)
+
+        E.g. if depth is set to 2, it will check and upload any subjects or experiments that exist in 
+        the local directory but not in XNAT.
+
+        :session: XNAT connection object
+        :project: XNAT project object
+        :depth: level at which to scan and upload directories
+        :local_root: the local root folder in which the project folder is contained
+        """
+
+        logging.info('BEGIN UPLOAD')
 
         start = timeit.default_timer()
         project_path = str(Path(local_root,project.id))
@@ -147,19 +162,12 @@ class XNATSync:
         for root, dirs, files in os.walk(top=project_path, topdown=True):
 
             # check prearchive for fun
-            for s in session.prearchive.find(project=project.id):
-                logging.debug(f'Prearchive: {s}, {s.status}')
-
-            # what does this even do
-            # session.services.refresh_catalog(resource=project)
+            # for s in session.prearchive.find(project=project.id):
+            #     logging.debug(f'Prearchive: {s}, {s.status}')
 
             cur_depth = root.count(os.path.sep)
-            # logging.info(f'depth: {depth}')
-            # logging.info(f'base_depth: {base_depth}')
-            # logging.info(f'root: {root}')
-            # logging.info(f'cur_depth: {cur_depth}')
             if cur_depth - base_depth >= depth:
-                logging.info('TOO DEEP, MOVING ON')
+                #logging.info('TOO DEEP, MOVING ON')
                 continue
 
             for dir in dirs:
@@ -168,63 +176,59 @@ class XNATSync:
                 xnat_dir = str(Path(*parts))
                 project_id = parts[0]
                     
-                if xnat_dir.count(os.path.sep) == 0:
-                    continue
-
-                if successful_upload and (parts[1] in successful_upload):
+                if len(parts) == 1:
                     continue
 
                 try:
-                    logging.debug(f'Checking if directory {xnat_dir} exists in XNAT')
+                    logging.info(f'Checking if directory {xnat_dir} exists in XNAT')
 
                     if len(parts) == 2:
+
                         assert session.projects[parts[0]].subjects[parts[1]]
 
                     elif len(parts) == 3:
-                        try:
-                            session.projects[parts[0]].subjects[parts[1]].experiments[parts[2]]
-                        except:
-                            exists_in_archive = False
-                        else:
-                            exists_in_archive = True
 
-                        exists_in_prearchive = self._check_prearchive(session=session,project=project,subject=parts[1],exp=parts[2])
-
-                        if not exists_in_archive and not exists_in_prearchive:
-                            raise Exception()
+                        if parts[1] in successful_upload:
+                            logging.info(f'Directory {xnat_dir} already uploaded via parent directory')
+                            continue
+                        assert session.projects[parts[0]].subjects[parts[1]].experiments[parts[2]]
 
                     elif len(parts) == 5:
+
+                        if (parts[1]) in successful_upload or (parts[1],parts[2]) in successful_upload:
+                            logging.info(f'Directory {xnat_dir} already uploaded via parent directory')
+                            continue
                         assert session.projects[parts[0]].subjects[parts[1]].experiments[parts[2]].scans[parts[4].split(sep='-')[0]]
 
-                    # if xnat_dir.count(os.path.sep) == 1:
-                    #     assert session.projects[project_id].subjects[parts[1]]
-                    # elif xnat_dir.count(os.path.sep) == 2:
-                    #     assert session.projects[project_id].subjects[parts[1]].experiments[parts[2]]
-                    # elif xnat_dir.count(os.path.sep) == 4:
-                    #     assert session.projects[project_id].subjects[parts[1]].experiments[parts[2]].scans[parts[4].split(sep='-')[0]]
-                    # could add assertions for more sub directories !!!
-
                     else:
-                        logging.warning(f'Directory {xnat_dir} not a subject, experiment, or scan. Skipping upload.')
+                        logging.info(f'Directory {xnat_dir} not a subject, experiment, or scan. Skipping upload.')
                         continue
 
                 except Exception as e:
                     logging.info(f'Directory {xnat_dir} does not exist in XNAT, attempting to upload...')
                     logging.debug(f'Original exception: {e}')
                     try:
-                        session.services.import_dir(directory=full_path, project=project_id, subject=parts[1])
+                        session.services.import_dir(directory=full_path, overwrite='append', project=project_id, subject=parts[1])
                     except Exception as e:
                         logging.info(f'Directory {xnat_dir} failed to upload, will try uploading as subdirectories')
                         logging.debug(f'Original exception: {e}')
                     else:
                         logging.info(f'Directory {xnat_dir} successfully uploaded to XNAT')
                         logging.debug(f'UPLOAD ELAPSED TIME : {xnat_dir} : {timeit.default_timer() - start}')
-                        successful_upload.append(parts[1])
+                        if len(parts) == 2:
+                            successful_upload.append((parts[1]))
+                        elif len(parts) == 3:
+                            successful_upload.append((parts[1],parts[2]))
                 else:
                     logging.info(f'Directory {xnat_dir} exists in XNAT, moving on to next directory or subdirectory')
 
 
-    def _check_prearchive(self, session: xnat.session.XNATSession, project, subject: str, exp: str) -> bool:
+    def _search_prearchive(self, session: xnat.session.XNATSession, project, subject: str, exp: str) -> bool:
+        """
+        Intended to seach prearchive for directories currently in the process of uploading, archiving to XNAT
+        NOT IN USE
+        """
+
         status_list = ('ARCHIVE PENDING','ARCHIVING NOW','BUILD PENDING','BUILDING NOW','READY')
 
         for status in status_list:
