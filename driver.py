@@ -29,7 +29,7 @@ import os
 def main():
     HOST = 'https://xnatccn.semel.ucla.edu/'
     PROJECT_ID = 'sync_test'  # 'RADCO'
-    LOCAL = 'test_data'  # path to nyx raw dicoms folder
+    LOCAL = 'test_data'  # path to nyx raw dicoms folder, I recommend creating a new, empty directory for this
     LOGS = 'logs'  # path to nyx logs folder
 
     # make directories if they don't exist

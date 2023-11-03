@@ -239,6 +239,8 @@ class XNATSync:
         Can set the directory level (depth) at which to check 1 (subjects), 2 (experiments), 4 (scans).
         (Possible to add deeper levels in future version, e.g. resources, files)
 
+        TODO: add resource and file levels
+
         E.g. if depth is set to 2, it will check and upload any subjects or experiments that exist in 
         the local directory but not in XNAT.
 
@@ -272,20 +274,16 @@ class XNATSync:
 
                 try:
                     logging.info(f'Checking if directory {xnat_dir} exists in XNAT')
-
                     if len(parts) == 2:
-
                         assert session.projects[parts[0]].subjects[parts[1]]
 
                     elif len(parts) == 3:
-
                         if parts[1] in successful_upload:
                             logging.info(f'Directory {xnat_dir} already uploaded via parent directory')
                             continue
                         assert session.projects[parts[0]].subjects[parts[1]].experiments[parts[2]]
 
                     elif len(parts) == 5:
-
                         if (parts[1]) in successful_upload or (parts[1],parts[2]) in successful_upload:
                             logging.info(f'Directory {xnat_dir} already uploaded via parent directory')
                             continue
