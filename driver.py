@@ -4,7 +4,8 @@
 """
 Example driver for the XNATSync class
 
-Matthew Thompson - 2023-11-03
+matthew thompson
+2023-11-03
 mbthompson14@gmail.com
 
 XNAT credentials must be stored in ~/.netrc in the following format:
@@ -29,7 +30,7 @@ import os
 def main():
     HOST = 'https://xnatccn.semel.ucla.edu/'
     PROJECT_ID = 'sync_test'  # 'RADCO'
-    LOCAL = 'test_data'  # path to nyx raw dicoms folder, I recommend creating a new, empty directory for this
+    LOCAL = 'test_data'  # path to nyx raw dicoms folder, I recommend creating a new directory for this
     LOGS = 'logs'  # path to nyx logs folder
 
     # make directories if they don't exist

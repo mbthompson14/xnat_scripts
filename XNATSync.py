@@ -1,10 +1,11 @@
 #!/Users/matthew/anaconda3/bin/python
-# edit shebang to python path on nyx
+# change to python path on nyx
 
 """
 XNATSync class definition
 
-Matthew Thompson - 2023-11-03
+matthew thompson
+2023-11-03
 mbthompson14@gmail.com
 
 https://xnat.readthedocs.io/en/latest/index.html
