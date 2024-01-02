@@ -1,11 +1,11 @@
-
 .DS_Store
-.DS*
 Raw*
 test*
 arch/
 exp/
-
+*.sh
+tmp/
+sync_class/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
