@@ -13,5 +13,5 @@ def logging_setup(log_level: int, logs_dir: str, name: str) -> None:
     logging.basicConfig(level=log_level, 
                         format='%(asctime)s %(levelname)s: %(message)s',
                         handlers=[
-                            logging.FileHandler(f'{logs_dir}/{name}_xnat_{datetime.now()}.log', mode='w'),
+                            logging.FileHandler(f'{logs_dir}/{name}_xnat_{datetime.now():%Y-%m-%d_%H:%M:%S}.log', mode='w'),
                         ])
