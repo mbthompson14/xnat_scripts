@@ -1,4 +1,4 @@
-#!/Users/matthew/anaconda3/bin/python
+#!/nyx3/data/RAD22/Scripts/DataOrg/xnat_scripts/env/bin/python3
 
 """
 Copy data from XNAT to NYX if data does not exist on NYX
