@@ -1,6 +1,8 @@
 #!/nyx3/data/RAD22/Scripts/DataOrg/xnat_scripts/env/bin/python3
 
 """
+DEPRECATED
+
 Copy data from XNAT to NYX if data does not exist on NYX
 
 matthew thompson
@@ -17,7 +19,7 @@ import argparse
 import pathlib
 from pathlib import Path
 import datetime
-from util import logging_setup
+from scripts.util import logging_setup
 from constants import HOST, PROJECT_ID, EXP_DIR, LOGS_DIR
 
 def main():

@@ -1,0 +1,13 @@
+{
+    "descriptor" : [
+    {
+    "name" : "Robert Welsh",
+    "email" : "rcwelsh@g.ucla.edu",
+    "version" : 1.0,
+    "this_file" : "rad22_config.json"
+    }
+    ],
+    "xnat_server" : "xnatccn.semel.ucla.edu",
+    "exp_dir" : "/nox2/data/RAD22",
+    "series_list" : "expectedSeriesList.txt"
+}
