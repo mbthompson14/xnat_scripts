@@ -1,4 +1,6 @@
-#!/nyx3/data/RAD22/Scripts/DataOrg/xnat_scripts/env/bin/python3
+#!/Users/matthew/Repos/xnat_scripts/env/bin/python3
+
+# /nyx3/data/RAD22/Scripts/DataOrg/xnat_scripts/env/bin/python3
 
 """
 returns a list of sessions from an XNAT database
@@ -8,30 +10,64 @@ matthew thompson
 
 """
 
+import sys
 import xnat
 import argparse
-from util import logging_setup, config, connect_to_xnat
+import logging
+from pathlib import Path
+from util import logging_setup, config
 
 CONFIG = 'test_config.json'
 
 def main():
-    # get args
+    # (1) get args
     args = parse_args()
 
-    # get server, exp dir
+    # (2) get server, exp dir
     server, exp_dir = config(CONFIG)
 
-    # setup logging
-    logging_setup(log_level=args.debug, logs_dir=f"{exp_dir}/logs", name='listXNATdata')
+    # (3) setup logging
+    logging_setup(
+        log_level=args.debug, 
+        logs_dir=f"{exp_dir}/logs", 
+        #LOGS/XNAT/{year}/{year}{month}/listXNATdata_20240809_144139.log
+        name=Path(__file__).stem)
 
-    # connect to server
-    session = connect_to_xnat(server, args.database, exp_dir)
+    # (4) call list function
+    list_data(server, args.database)
 
-    # call list function
+
+def list_data(server: str, database: str) -> None:
+
+    logging.info(f'Running {Path(__file__).name}')
+    logging.info(f'Database: {database}')
+
+    try:
+        connection = xnat.connect(
+            server=server, 
+            default_timeout = 600, 
+            loglevel=logging.root.level,
+            logger=logging.getLogger())
+    except:
+        logging.error('XNAT connection error')
+        sys.exit(9)
+    else:
+        with connection:
+            if database in connection.projects:
+                project = connection.projects[database]
+
+                for session in project.experiments.values():
+                    print(session.label)
+                    logging.info(f'[session]: {session.label}')
+
+            else:
+                logging.error('XNAT database does not exist')
+                sys.exit(1)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        prog='listXNATdata.py',
+        prog=Path(__file__).name,
         description="returns a list of sessions from an XNAT database",
         epilog='''
 output:

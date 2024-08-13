@@ -34,14 +34,25 @@ def logging_setup(log_level: bool, logs_dir: str, name: str) -> None:
     logging.basicConfig(level=level, 
                         format='%(asctime)s %(levelname)s: %(message)s',
                         handlers=[
-                            logging.FileHandler(f'{logs_dir}/{name}_xnat_{datetime.now():%Y-%m-%d_%H:%M:%S}.log', mode='w'),
+                            logging.FileHandler(f'{logs_dir}/{name}_{datetime.now():%Y-%m-%d_%H:%M:%S}.log', mode='w'),
                         ])
     
-def connect_to_xnat(server: str, database: str, exp_dir: str):
+# def connect_to_xnat(server: str) -> xnat.session.XNATSession:
 
-    with xnat.connect(server=server, default_timeout = 600, loglevel=logging.root.level) as (session, err):
-        if err:
-            print(f'XNAT connection error: {err}')
-            sys.exit(9)
-        else:
-            return session
+#     logging.info('attempting connection to XNAT server')
+
+#     try:
+#         session = xnat.connect(server=server, default_timeout = 600, loglevel=logging.root.level)
+#     except:
+#         logging.error('XNAT connection error')
+#         sys.exit(9)
+#     else:
+#         with session:
+#             return session
+
+    # with xnat.connect(server=server, default_timeout = 600, loglevel=logging.root.level) as (session, err):
+    #     if err:
+    #         print(f'XNAT connection error: {err}')
+    #         sys.exit(9)
+    #     else:
+    #         return session
