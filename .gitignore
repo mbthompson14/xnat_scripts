@@ -5,7 +5,8 @@ arch/
 exp/
 *.sh
 tmp/
-sync_class/
+archive/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

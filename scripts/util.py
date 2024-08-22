@@ -14,45 +14,42 @@ import sys
 import xnat
 import json
 import logging
+from pathlib import Path
 from datetime import datetime
+from urllib.parse import ParseResult, urlparse
 
 def config(config_filepath: str) -> tuple[str,str]:
 
     # read config file
     with open(config_filepath) as f:
+        # load json
         config_json = json.load(f)
+
+        # parse xnat url, add scheme (https) if missing
+        p = urlparse(config_json['xnat_server'])
+        netloc = p.netloc or p.path
+        path = p.path if p.netloc else ''
+        p = ParseResult('https', netloc, path, *p[3:])
+        xnat_url = p.geturl()
+
         # return server URL & exp dir
-        return config_json['xnat_server'], config_json['exp_dir']
+        return xnat_url, config_json['exp_dir']
 
 def logging_setup(log_level: bool, logs_dir: str, name: str) -> None:
     
+    # get logging level
     if log_level:
         level = logging.DEBUG
     else:
         level = logging.INFO
 
+    # set log dir path & create (+ parents) if it doesn't exist
+    log_path = f'{logs_dir}/{datetime.now():%Y}/{datetime.now():%Y%m}'
+    Path(log_path).mkdir(parents=True, exist_ok=True)
+
+    # define logger
     logging.basicConfig(level=level, 
                         format='%(asctime)s %(levelname)s: %(message)s',
                         handlers=[
-                            logging.FileHandler(f'{logs_dir}/{name}_{datetime.now():%Y-%m-%d_%H:%M:%S}.log', mode='w'),
+                            logging.FileHandler(f'{log_path}/{name}_{datetime.now():%Y%m%d_%H%M%S}.log', mode='w'),
                         ])
-    
-# def connect_to_xnat(server: str) -> xnat.session.XNATSession:
-
-#     logging.info('attempting connection to XNAT server')
-
-#     try:
-#         session = xnat.connect(server=server, default_timeout = 600, loglevel=logging.root.level)
-#     except:
-#         logging.error('XNAT connection error')
-#         sys.exit(9)
-#     else:
-#         with session:
-#             return session
-
-    # with xnat.connect(server=server, default_timeout = 600, loglevel=logging.root.level) as (session, err):
-    #     if err:
-    #         print(f'XNAT connection error: {err}')
-    #         sys.exit(9)
-    #     else:
-    #         return session

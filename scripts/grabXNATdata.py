@@ -1,6 +1,6 @@
-#!/Users/matthew/Repos/xnat_scripts/env/bin/python3
+#!/Users/matthew/Repos/xnat_scripts/venv/bin/python3
 
-# /nyx3/data/RAD22/Scripts/DataOrg/xnat_scripts/env/bin/python3
+# /nox2/data/RAD22/Scripts/DataOrg/xnat_scripts/venv/bin/python3
 
 """
 grab a specific dataset (single session) from XNAT
@@ -20,19 +20,19 @@ from util import logging_setup, config
 CONFIG = 'test_config.json'
 
 def main():
-    # (1) get args
+    # get args
     args = parse_args()
 
-    # (2) get server, exp dir
+    # get server, exp dir
     server, exp_dir = config(CONFIG)
 
-    # (3) setup logging
+    # setup logging
     logging_setup(
         log_level=args.debug, 
-        logs_dir=f"{exp_dir}/logs", 
+        logs_dir=f"{exp_dir}/LOGS/XNAT", 
         name=Path(__file__).stem)
 
-    # (4) call grab function
+    # call grab function
     grab_data(server, args.database, args.session)
 
 def grab_data(server: str, database: str, session: str) -> None:
@@ -48,6 +48,7 @@ def grab_data(server: str, database: str, session: str) -> None:
             loglevel=logging.root.level,
             logger=logging.getLogger())
     except:
+        print('XNAT connection error')
         logging.error('XNAT connection error')
         sys.exit(9)
     else:
@@ -73,33 +74,6 @@ def grab_data(server: str, database: str, session: str) -> None:
                 print('XNAT database does not exist')
                 logging.error('XNAT database does not exist')
                 sys.exit(1)
-
-# def list_data(server, database):
-
-#     logging.info(f'Running {Path(__file__).name}')
-
-#     try:
-#         connection = xnat.connect(
-#             server=server, 
-#             default_timeout = 600, 
-#             loglevel=logging.root.level,
-#             logger=logging.getLogger())
-#     except:
-#         logging.error('XNAT connection error')
-#         sys.exit(9)
-#     else:
-#         with connection:
-#             if database in connection.projects:
-#                 project = connection.projects[database]
-
-#                 for session in project.experiments.values():
-#                     print(session.label)
-#                     logging.info(f'[session]: {session.label}')
-
-#             else:
-#                 logging.error('XNAT database does not exist')
-#                 sys.exit(1)
-
 
 def parse_args():
     parser = argparse.ArgumentParser(

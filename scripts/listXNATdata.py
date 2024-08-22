@@ -1,6 +1,6 @@
-#!/Users/matthew/Repos/xnat_scripts/env/bin/python3
+#!/Users/matthew/Repos/xnat_scripts/venv/bin/python3
 
-# /nyx3/data/RAD22/Scripts/DataOrg/xnat_scripts/env/bin/python3
+# /nox2/data/RAD22/Scripts/DataOrg/xnat_scripts/venv/bin/python3
 
 """
 returns a list of sessions from an XNAT database
@@ -20,16 +20,16 @@ from util import logging_setup, config
 CONFIG = 'test_config.json'
 
 def main():
-    # (1) get args
+    # get args
     args = parse_args()
 
-    # (2) get server, exp dir
+    # get server, exp dir
     server, exp_dir = config(CONFIG)
 
-    # (3) setup logging
+    # setup logging
     logging_setup(
         log_level=args.debug, 
-        logs_dir=f"{exp_dir}/logs", 
+        logs_dir=f"{exp_dir}/LOGS/XNAT", 
         #LOGS/XNAT/{year}/{year}{month}/listXNATdata_20240809_144139.log
         name=Path(__file__).stem)
 
@@ -49,6 +49,7 @@ def list_data(server: str, database: str) -> None:
             loglevel=logging.root.level,
             logger=logging.getLogger())
     except:
+        print('XNAT connection error')
         logging.error('XNAT connection error')
         sys.exit(9)
     else:
