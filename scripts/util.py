@@ -44,6 +44,7 @@ def logging_setup(log_level: bool, logs_dir: str, name: str) -> None:
         level = logging.INFO
 
     # set log dir path & create (+ parents) if it doesn't exist
+    # e.g. LOGS/XNAT/2024/202408/listXNATdata_20240809_144139.log
     log_path = f'{logs_dir}/{datetime.now():%Y}/{datetime.now():%Y%m}'
     Path(log_path).mkdir(parents=True, exist_ok=True)
 

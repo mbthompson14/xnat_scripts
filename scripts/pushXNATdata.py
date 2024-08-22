@@ -23,7 +23,7 @@ def main():
     # get args
     args = parse_args()
 
-    # get server, exp dir
+    # get server address, exp dir
     server, exp_dir = config(CONFIG)
 
     # setup logging
@@ -41,43 +41,55 @@ def push_data(server: str, database: str, session: str) -> None:
     logging.info(f'Database: {database}')
     logging.info(f'Session: {session}')
 
+    # set path to session, expect to find it in the present dir
+    # abort if it doesn't exist
     local_path = Path(f'./{session}')
-
     if not local_path.exists():
         print(f'Local session {local_path} does not exist')
         logging.error(f'Local session {local_path} does not exist')
         sys.exit(2)
 
     try:
+        # attempt to connect to the server
         connection = xnat.connect(
             server=server, 
             default_timeout = 600, 
             loglevel=logging.root.level,
             logger=logging.getLogger())
     except:
+        # problem connecting to server, abort
         print('XNAT connection error')
         logging.error('XNAT connection error')
         sys.exit(9)
     else:
+        # successfully connected to server
         with connection:
+            # look for project on the server
             if database in connection.projects:
+                # project found
                 project = connection.projects[database]
 
+                # look for session in the project
                 if session in project.experiments:
+                    # session already exists in this project, abort
                     print('XNAT session already exists')
                     logging.error('XNAT session already exists')
                     sys.exit(3)
                 else:
+                    # attempt to upload session
                     try:
                         connection.services.import_dir(local_path)
                     except:
+                        # problem uploading
                         print('Error uploading session data')
                         logging.error('Error uploading session data')
                         sys.exit(4)
                     else:
+                        # succeful upload
                         print(f'Successfully uploaded: {session}')
                         logging.info(f'Successfully uploaded: {session}')
             else:
+                # could not find project on the server
                 print('XNAT database does not exist')
                 logging.error('XNAT database does not exist')
                 sys.exit(1)

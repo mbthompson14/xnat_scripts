@@ -23,19 +23,17 @@ def main():
     # get args
     args = parse_args()
 
-    # get server, exp dir
+    # get server address, exp dir
     server, exp_dir = config(CONFIG)
 
     # setup logging
     logging_setup(
         log_level=args.debug, 
-        logs_dir=f"{exp_dir}/LOGS/XNAT", 
-        #LOGS/XNAT/{year}/{year}{month}/listXNATdata_20240809_144139.log
+        logs_dir=f"{exp_dir}/LOGS/XNAT",
         name=Path(__file__).stem)
 
-    # (4) call list function
+    # call list function
     list_data(server, args.database)
-
 
 def list_data(server: str, database: str) -> None:
 
@@ -43,25 +41,32 @@ def list_data(server: str, database: str) -> None:
     logging.info(f'Database: {database}')
 
     try:
+        # attempt to connect to the server
         connection = xnat.connect(
             server=server, 
             default_timeout = 600, 
             loglevel=logging.root.level,
             logger=logging.getLogger())
     except:
+        # problem connecting to server, abort
         print('XNAT connection error')
         logging.error('XNAT connection error')
         sys.exit(9)
     else:
+        # successfully connected to server
         with connection:
+            # look for project on the server
             if database in connection.projects:
+                # project found
                 project = connection.projects[database]
 
+                # loop thru and print sessions
                 for session in project.experiments.values():
                     print(session.label)
                     logging.info(f'[session]: {session.label}')
 
             else:
+                # could not find project on the server
                 logging.error('XNAT database does not exist')
                 sys.exit(1)
 

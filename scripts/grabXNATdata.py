@@ -23,7 +23,7 @@ def main():
     # get args
     args = parse_args()
 
-    # get server, exp dir
+    # get server address, exp dir
     server, exp_dir = config(CONFIG)
 
     # setup logging
@@ -42,21 +42,28 @@ def grab_data(server: str, database: str, session: str) -> None:
     logging.info(f'Session: {session}')
 
     try:
+        # attempt to connect to the server
         connection = xnat.connect(
             server=server, 
             default_timeout = 600, 
             loglevel=logging.root.level,
             logger=logging.getLogger())
     except:
+        # problem connecting to server, abort
         print('XNAT connection error')
         logging.error('XNAT connection error')
         sys.exit(9)
     else:
+        # successfully connected to server
         with connection:
+            # look for project on the server
             if database in connection.projects:
+                # project found
                 project = connection.projects[database]
-
+                
+                # look for session in the project
                 if session in project.experiments:
+                    # attempt to download the session
                     try:
                         project.experiments[session].download(f'./{session}.zip')
                     except:
@@ -64,13 +71,16 @@ def grab_data(server: str, database: str, session: str) -> None:
                         logging.error('Error downloading session data')
                         sys.exit(3)
                     else:
+                        # successfully downloaded
                         print(f'Successfully downloaded: {session}')
                         logging.info(f'Successfully downloaded: {session}')
                 else:
+                    # could not find session in this project
                     print('XNAT session does not exist')
                     logging.error('XNAT session does not exist')
                     sys.exit(2)
             else:
+                # could not find project on the server
                 print('XNAT database does not exist')
                 logging.error('XNAT database does not exist')
                 sys.exit(1)
