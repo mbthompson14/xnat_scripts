@@ -33,9 +33,9 @@ def main():
         name=Path(__file__).stem)
 
     # call grab function
-    grab_data(server, args.database, args.session)
+    grab_data(server, args.database, args.session, args.binary)
 
-def grab_data(server: str, database: str, session: str) -> None:
+def grab_data(server: str, database: str, session: str, binary: bool) -> None:
     
     logging.info(f'Running {Path(__file__).name}')
     logging.info(f'Database: {database}')
@@ -63,17 +63,32 @@ def grab_data(server: str, database: str, session: str) -> None:
                 
                 # look for session in the project
                 if session in project.experiments:
-                    # attempt to download the session
-                    try:
-                        project.experiments[session].download(f'./{session}.zip')
-                    except:
-                        print('Error downloading session data')
-                        logging.error('Error downloading session data')
-                        sys.exit(3)
+                    if binary:  # if binary flag, download binary data only (from subject level)
+                        for file in project.experiments[session].subject.files.values():    
+                            try:
+                                print(f'Attempting to download {file.name} to current directory')
+                                logging.info(f'Attempting to download {file.name} to current directory')
+                                file.download(file.name)  # download file
+                            except:
+                                print(f'Error downloading file {file.name}')
+                                logging.error(f'Error downloading file {file.name}')
+                            else:
+                                print(f'Successfully downloaded: {file.name}')
+                                logging.info(f'Successfully downloaded: {file.name}')
                     else:
-                        # successfully downloaded
-                        print(f'Successfully downloaded: {session}')
-                        logging.info(f'Successfully downloaded: {session}')
+                        # attempt to download the session
+                        try:
+                            print(f'Attempting to download session {session} to current directory')
+                            logging.info(f'Attempting to download session {session} to current directory')
+                            project.experiments[session].download(f'./{session}.zip')
+                        except:
+                            print(f'Error downloading session {session} data')
+                            logging.error(f'Error downloading session {session} data')
+                            sys.exit(3)
+                        else:
+                            # successfully downloaded
+                            print(f'Successfully downloaded: {session}')
+                            logging.info(f'Successfully downloaded: {session}')
                 else:
                     # could not find session in this project
                     print('XNAT session does not exist')

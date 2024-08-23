@@ -33,9 +33,9 @@ def main():
         name=Path(__file__).stem)
 
     # call list function
-    list_data(server, args.database)
+    list_data(server, args.database, args.binary)
 
-def list_data(server: str, database: str) -> None:
+def list_data(server: str, database: str, binary: bool) -> None:
 
     logging.info(f'Running {Path(__file__).name}')
     logging.info(f'Database: {database}')
@@ -62,8 +62,13 @@ def list_data(server: str, database: str) -> None:
 
                 # loop thru and print sessions
                 for session in project.experiments.values():
-                    print(session.label)
-                    logging.info(f'[session]: {session.label}')
+                    if binary:  # if binary flag
+                        if any(session.subject.files):  # go up one level to subject and check for files
+                            print(session.label)
+                            logging.info(f'[session]: {session.label}')
+                    else:
+                        print(session.label)  # print all sessions
+                        logging.info(f'[session]: {session.label}')
 
             else:
                 # could not find project on the server
