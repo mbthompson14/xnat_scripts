@@ -68,8 +68,8 @@ def list_data(server: str, database: str, binary: bool) -> None:
                             logging.info(f'[session]: {session.label}')
                     else:
                         print(session.label)  # print all sessions
+                        #print(session.subject.label)
                         logging.info(f'[session]: {session.label}')
-
             else:
                 # could not find project on the server
                 logging.error('XNAT database does not exist')

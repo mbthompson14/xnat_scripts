@@ -8,6 +8,15 @@ grab a specific dataset (single session) from XNAT
 matthew thompson
 2024.08
 
+TODO server reponse ends prematurely when downloading full sessions from RADCO
+seems to consistently stop after 1GB has downloaded
+
+'The response ended prematurely' means the server to which you're 
+making an HTTP request closed the connection without having sent back a complete response.
+
+problem on xnat end?
+maybe won't have this problem when running from nox?
+
 """
 
 import sys
@@ -33,9 +42,9 @@ def main():
         name=Path(__file__).stem)
 
     # call grab function
-    grab_data(server, args.database, args.session, args.binary)
+    grab_data(server, exp_dir, args.database, args.session, args.binary)
 
-def grab_data(server: str, database: str, session: str, binary: bool) -> None:
+def grab_data(server: str, exp_dir: str, database: str, session: str, binary: bool) -> None:
     
     logging.info(f'Running {Path(__file__).name}')
     logging.info(f'Database: {database}')
@@ -48,10 +57,10 @@ def grab_data(server: str, database: str, session: str, binary: bool) -> None:
             default_timeout = 600, 
             loglevel=logging.root.level,
             logger=logging.getLogger())
-    except:
+    except Exception as e:
         # problem connecting to server, abort
-        print('XNAT connection error')
-        logging.error('XNAT connection error')
+        print('XNAT connection error, see log file for details')
+        logging.error(f'XNAT connection error: {e}')
         sys.exit(9)
     else:
         # successfully connected to server
@@ -64,31 +73,33 @@ def grab_data(server: str, database: str, session: str, binary: bool) -> None:
                 # look for session in the project
                 if session in project.experiments:
                     if binary:  # if binary flag, download binary data only (from subject level)
-                        for file in project.experiments[session].subject.files.values():    
+                        for file in project.experiments[session].subject.files.values():
+                            local_path = f'{exp_dir}/{file.name}'
                             try:
-                                print(f'Attempting to download {file.name} to current directory')
-                                logging.info(f'Attempting to download {file.name} to current directory')
-                                file.download(file.name)  # download file
-                            except:
-                                print(f'Error downloading file {file.name}')
-                                logging.error(f'Error downloading file {file.name}')
+                                print(f'Attempting to download {file.name} to experiment directory')
+                                logging.info(f'Attempting to download {file.name} to experiment directory')
+                                file.download(local_path)  # download file
+                            except Exception as e:
+                                print(f'Error downloading file {file.name}, see log file for details')
+                                logging.error(f'Error downloading file {file.name}: {e}')
                             else:
-                                print(f'Successfully downloaded: {file.name}')
-                                logging.info(f'Successfully downloaded: {file.name}')
+                                print(f'Successfully downloaded: {local_path}')
+                                logging.info(f'Successfully downloaded: {local_path}')
                     else:
                         # attempt to download the session
+                        local_path = f'{exp_dir}/{session}.zip'
                         try:
-                            print(f'Attempting to download session {session} to current directory')
-                            logging.info(f'Attempting to download session {session} to current directory')
-                            project.experiments[session].download(f'./{session}.zip')
-                        except:
-                            print(f'Error downloading session {session} data')
-                            logging.error(f'Error downloading session {session} data')
+                            print(f'Attempting to download session {session} to experiment directory')
+                            logging.info(f'Attempting to download session {session} to experiment directory')
+                            project.experiments[session].download(local_path)
+                        except Exception as e:
+                            print(f'Error downloading session {session} data, see log file for details')
+                            logging.error(f'Error downloading session {session} data: {e}')
                             sys.exit(3)
                         else:
                             # successfully downloaded
-                            print(f'Successfully downloaded: {session}')
-                            logging.info(f'Successfully downloaded: {session}')
+                            print(f'Successfully downloaded: {local_path}')
+                            logging.info(f'Successfully downloaded: {local_path}')
                 else:
                     # could not find session in this project
                     print('XNAT session does not exist')
@@ -106,7 +117,7 @@ def parse_args():
         description="grab a specific dataset (single session) from XNAT",
         epilog='''
 output:
-    returns (downloads) all data for a given session into the present working directory
+    returns (downloads) all data for a given session into the experiment
 
 example:
     grabXNATdata -x RADCO -s RAD22_GSU_BU101_140AKd_01
