@@ -42,9 +42,9 @@ def main():
         name=Path(__file__).stem)
 
     # call grab function
-    grab_data(server, exp_dir, args.database, args.session, args.binary)
+    grab_data(server, exp_dir, args.database, args.session, args.binary, args.verbose)
 
-def grab_data(server: str, exp_dir: str, database: str, session: str, binary: bool) -> None:
+def grab_data(server: str, exp_dir: str, database: str, session: str, binary: bool, verbose: bool) -> None:
     
     logging.info(f'Running {Path(__file__).name}')
     logging.info(f'Database: {database}')
@@ -78,7 +78,7 @@ def grab_data(server: str, exp_dir: str, database: str, session: str, binary: bo
                             try:
                                 print(f'Attempting to download {file.name} to experiment directory')
                                 logging.info(f'Attempting to download {file.name} to experiment directory')
-                                file.download(local_path)  # download file
+                                file.download(local_path, verbose=verbose)  # download file
                             except Exception as e:
                                 print(f'Error downloading file {file.name}, see log file for details')
                                 logging.error(f'Error downloading file {file.name}: {e}')
@@ -91,7 +91,7 @@ def grab_data(server: str, exp_dir: str, database: str, session: str, binary: bo
                         try:
                             print(f'Attempting to download session {session} to experiment directory')
                             logging.info(f'Attempting to download session {session} to experiment directory')
-                            project.experiments[session].download(local_path)
+                            project.experiments[session].download(local_path, verbose=verbose)
                         except Exception as e:
                             print(f'Error downloading session {session} data, see log file for details')
                             logging.error(f'Error downloading session {session} data: {e}')
@@ -152,6 +152,12 @@ error exit codes:
     parser.add_argument(
         '-d','--debug',
         help='debug',
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '-v','--verbose',
+        help='show progress bar',
         action='store_true'
     )
 
